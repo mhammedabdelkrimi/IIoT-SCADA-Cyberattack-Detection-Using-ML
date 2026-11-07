@@ -1,0 +1,1 @@
+{"data": {"Protocol": "TCP", "Service": "http", "Duration": 0.5, "Scr_bytes": 120, "Des_bytes": 300, "Scr_pkts": 3, "Des_pkts": 4, "anomaly_alert": "FALSE"}}
