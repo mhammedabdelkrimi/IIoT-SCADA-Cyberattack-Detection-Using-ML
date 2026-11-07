@@ -10,9 +10,14 @@ permissions:
   contents: write
   packages: write
 
+concurrency:                       # une seule exécution à la fois par branche (évite les conflits de push)
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -25,11 +30,14 @@ jobs:
   train:
     needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     outputs:
       promoted: ${{ steps.promote.outputs.promoted }}
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.B2_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required      # compatibilité Backblaze B2 / boto3 récent
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -44,6 +52,17 @@ jobs:
       - name: Promotion (strictement meilleur uniquement)
         id: promote
         run: python -m src.promote --tag ci
+      - name: Conserver les rapports d'entraînement
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            reports/metrics.json
+            reports/model_card.json
+            reports/grid_search.csv
+            reports/recall_par_type.csv
+          if-no-files-found: ignore
       - name: Versionner le modèle promu (DVC) et la référence
         if: steps.promote.outputs.promoted == 'true'
         run: |
@@ -53,7 +72,12 @@ jobs:
           git config user.email "github-actions@users.noreply.github.com"
           git add models/model_ci.pkl.dvc models/features_ci.json reports/production_ci.json
           git commit -m "chore: modèle promu (ci) [skip ci]"
-          git push
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            sleep 5
+          done
+          echo "Push impossible après 3 essais" >&2
+          exit 1
       - name: Transmettre le modèle au job build
         if: steps.promote.outputs.promoted == 'true'
         uses: actions/upload-artifact@v4
@@ -67,6 +91,7 @@ jobs:
     needs: train
     if: needs.train.outputs.promoted == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -79,14 +104,24 @@ jobs:
             --build-arg MODEL_FILE=models/model_ci.pkl \
             --build-arg FEATURES_FILE=models/features_ci.json \
             -t ids-api:ci .
-      - name: Test de fumée /health
+      - name: Test de fumée (service démarré et modèle chargé)
         run: |
           docker run -d -p 8000:8000 --name api ids-api:ci
-          sleep 15
-          curl --fail http://localhost:8000/health
+          for i in $(seq 1 30); do
+            if curl -fs http://localhost:8000/health | grep -q '"model_loaded":true'; then
+              echo "API opérationnelle, modèle chargé"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Échec du test de fumée" >&2
+          docker logs api
+          exit 1
       - name: Publier sur GHCR
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-          IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}:latest
-          docker tag ids-api:ci $IMAGE
-          docker push $IMAGE
+          IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}
+          docker tag ids-api:ci "$IMAGE:latest"
+          docker tag ids-api:ci "$IMAGE:${GITHUB_SHA::7}"
+          docker push "$IMAGE:latest"
+          docker push "$IMAGE:${GITHUB_SHA::7}"

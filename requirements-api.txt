@@ -1,0 +1,10 @@
+pandas==2.2.3
+numpy==1.26.4
+scipy==1.13.1
+scikit-learn==1.5.2
+joblib
+pyyaml
+python-dotenv
+pydantic>=2
+fastapi>=0.110
+uvicorn

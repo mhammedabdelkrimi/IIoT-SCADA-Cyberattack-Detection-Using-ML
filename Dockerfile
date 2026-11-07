@@ -1,14 +1,33 @@
-FROM python:3.11-slim
+FROM python:3.11-slim AS base
+ENV PIP_DEFAULT_TIMEOUT=300 \
+    PIP_RETRIES=10 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONUNBUFFERED=1 \
+    MODEL_PATH=/app/models/model.pkl \
+    FEATURES_PATH=/app/models/features.json
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
+
+# ---------- API ----------
+FROM base AS api
+COPY requirements-api.txt .
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements-api.txt
 COPY src ./src
 COPY configs ./configs
-ARG MODEL_FILE=models/model.pkl
-ARG FEATURES_FILE=models/features.json
-COPY ${MODEL_FILE} ./models/model.pkl
-COPY ${FEATURES_FILE} ./models/features.json
-ENV MODEL_PATH=/app/models/model.pkl
-ENV FEATURES_PATH=/app/models/features.json
+COPY models/model.pkl ./models/model.pkl
+COPY models/features.json ./models/features.json
 EXPOSE 8000
 CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+
+# ---------- Monitoring ----------
+FROM base AS monitor
+COPY requirements-monitor.txt requirements-api.txt ./
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements-monitor.txt
+COPY src ./src
+COPY configs ./configs
+COPY models/model.pkl ./models/model.pkl
+COPY models/features.json ./models/features.json
+CMD ["python", "-m", "src.monitoring"]

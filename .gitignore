@@ -20,3 +20,9 @@ mlruns/
 mlflow.db
 logs/
 .ipynb_checkpoints/
+mlartifacts/
+
+reports/drift_report.html
+reports/drift_summary.json
+
+

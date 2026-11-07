@@ -1,7 +1,7 @@
 .git
-.env
 .venv
 venv
+.env
 data
 mlruns
 mlflow.db
@@ -10,3 +10,4 @@ reports
 notebooks
 tests
 __pycache__
+*.pyc
