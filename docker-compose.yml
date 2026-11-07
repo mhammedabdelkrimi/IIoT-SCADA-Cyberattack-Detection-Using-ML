@@ -1,0 +1,21 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      VALIDATION_STATUS: ${VALIDATION_STATUS:-422}
+      PROD_LOG_PATH: /app/data/production/requests.csv
+    volumes:
+      - ./data/production:/app/data/production
+
+  monitor:                      # régénère le rapport de dérive chaque semaine
+    build: .
+    command: sh -c "while true; do python -m src.monitoring; sleep 604800; done"
+    environment:
+      PROD_LOG_PATH: /app/data/production/requests.csv
+    volumes:
+      - ./data:/app/data:ro
+      - ./reports:/app/reports
+    depends_on:
+      - api

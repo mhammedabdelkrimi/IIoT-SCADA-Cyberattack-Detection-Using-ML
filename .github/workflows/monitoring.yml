@@ -1,0 +1,23 @@
+name: Weekly drift report
+on:
+  schedule:
+    - cron: "0 8 * * 1"          # chaque lundi à 8h
+  workflow_dispatch:
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - name: Identifiants DVC
+        run: |
+          dvc remote modify --local dagshub access_key_id ${{ secrets.DAGSHUB_TOKEN }}
+          dvc remote modify --local dagshub secret_access_key ${{ secrets.DAGSHUB_TOKEN }}
+      - run: dvc pull -r dagshub data/raw/entrainement_ballon_dor_2014_2025.csv.dvc data/raw/candidats_ballon_dor_2026.csv.dvc
+      - run: python src/monitoring.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: drift-report
+          path: reports/*.html

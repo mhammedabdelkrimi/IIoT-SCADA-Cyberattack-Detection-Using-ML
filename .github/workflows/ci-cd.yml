@@ -1,0 +1,92 @@
+name: ci-cd
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: pytest -q
+
+  train:
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      promoted: ${{ steps.promote.outputs.promoted }}
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Récupérer les données (DVC -> Backblaze)
+        run: dvc pull data/raw/data_small_50000.csv.dvc data/raw/data_val_10000.csv.dvc
+      - name: Entraîner
+        run: python -m src.train
+      - name: Promotion (strictement meilleur uniquement)
+        id: promote
+        run: python -m src.promote --tag ci
+      - name: Versionner le modèle promu (DVC) et la référence
+        if: steps.promote.outputs.promoted == 'true'
+        run: |
+          dvc add models/model_ci.pkl
+          dvc push models/model_ci.pkl.dvc
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add models/model_ci.pkl.dvc models/features_ci.json reports/production_ci.json
+          git commit -m "chore: modèle promu (ci) [skip ci]"
+          git push
+      - name: Transmettre le modèle au job build
+        if: steps.promote.outputs.promoted == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: model
+          path: |
+            models/model_ci.pkl
+            models/features_ci.json
+
+  build:
+    needs: train
+    if: needs.train.outputs.promoted == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: model
+          path: models
+      - name: Construire l'image
+        run: |
+          docker build \
+            --build-arg MODEL_FILE=models/model_ci.pkl \
+            --build-arg FEATURES_FILE=models/features_ci.json \
+            -t ids-api:ci .
+      - name: Test de fumée /health
+        run: |
+          docker run -d -p 8000:8000 --name api ids-api:ci
+          sleep 15
+          curl --fail http://localhost:8000/health
+      - name: Publier sur GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}:latest
+          docker tag ids-api:ci $IMAGE
+          docker push $IMAGE

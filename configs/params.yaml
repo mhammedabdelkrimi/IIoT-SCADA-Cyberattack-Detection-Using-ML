@@ -1,0 +1,26 @@
+data:
+  train_csv: data/raw/data_small_50000.csv
+  val_csv: data/raw/data_val_10000.csv
+  target: class3
+  positive: Attack
+  type_column: class1
+
+split:
+  test_size: 0.2
+  random_state: 42
+
+model:
+  C_grid: [0.01, 0.1, 1, 10, 100]
+  class_weight_grid: [null, balanced]
+  max_iter: 500
+  tol: 0.001
+  cv_folds: 3
+
+mlflow:
+  experiment: ids-attack-detection
+  registered_model: ids-logreg
+
+monitoring:
+  reference_sample: 5000
+  min_requests: 50
+  drift_share: 0.15

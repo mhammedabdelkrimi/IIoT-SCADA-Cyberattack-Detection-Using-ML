@@ -1,0 +1,14 @@
+stages:
+  train:
+    cmd: python -m src.train
+    deps:
+      - src/train.py
+      - src/features.py
+      - configs/params.yaml
+      - data/raw/data_small_50000.csv
+      - data/raw/data_val_10000.csv
+    outs:
+      - models/candidate.pkl
+    metrics:
+      - reports/metrics.json:
+          cache: false

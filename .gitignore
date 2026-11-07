@@ -1,9 +1,22 @@
+# Données et modèles (gérés par DVC)
+data/raw/*.csv
+data/processed/
+data/production/
+*.joblib
+*.pkl
+*.onnx
+
+# Secrets
 .env
+
+# Python
+.venv/
 venv/
-venv-monitoring/
 __pycache__/
 *.pyc
+
+# MLflow, journaux, notebooks
 mlruns/
 mlflow.db
-reports/*.html
+logs/
 .ipynb_checkpoints/
