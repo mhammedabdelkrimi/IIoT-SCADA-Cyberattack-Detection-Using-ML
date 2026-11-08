@@ -58,7 +58,8 @@ class Prep(BaseEstimator, TransformerMixin):
         self.asym_ = [c for c in self.num_ if abs(skew[c]) >= 1 and Xn[c].nunique() > 2]
         self.pt_ = PowerTransformer(method="yeo-johnson", standardize=False)
         if self.asym_:
-            Xn[self.asym_] = self.pt_.fit_transform(Xn[self.asym_])
+            with np.errstate(over="ignore", invalid="ignore"):   # Yeo-Johnson essaie des valeurs extrêmes
+                Xn[self.asym_] = self.pt_.fit_transform(Xn[self.asym_])
 
         self.cont_ = [c for c in self.num_ if Xn[c].nunique() > 2]   # continues
         self.pass_ = [c for c in self.num_ if c not in self.cont_]   # binaires 0/1
@@ -74,7 +75,8 @@ class Prep(BaseEstimator, TransformerMixin):
     def transform(self, X):
         Xn = pd.DataFrame(self.imp_num_.transform(X[self.num_]), columns=self.num_, index=X.index)
         if self.asym_:
-            Xn[self.asym_] = self.pt_.transform(Xn[self.asym_])
+            with np.errstate(over="ignore", invalid="ignore"):
+                Xn[self.asym_] = self.pt_.transform(Xn[self.asym_])
         Xc = Xn[self.cont_].clip(self.lo_, self.hi_, axis=1)
         return np.hstack([
             self.scaler_.transform(Xc),

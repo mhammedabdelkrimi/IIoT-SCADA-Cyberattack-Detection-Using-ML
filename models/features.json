@@ -74,5 +74,208 @@
     "class3",
     "Bad_checksum",
     "is_SYN_with_RST"
-  ]
+  ],
+  "model_card": {
+    "metrics": {
+      "train_accuracy": 0.977125,
+      "train_precision": 0.988514,
+      "train_recall": 0.964179,
+      "train_f1": 0.976195,
+      "train_auc": 0.992977,
+      "train_loss": 0.082997,
+      "test_accuracy": 0.978,
+      "test_precision": 0.991325,
+      "test_recall": 0.963199,
+      "test_f1": 0.977059,
+      "test_auc": 0.993731,
+      "test_loss": 0.076927,
+      "val_accuracy": 0.976,
+      "val_precision": 0.98797,
+      "val_recall": 0.962377,
+      "val_f1": 0.975005,
+      "val_auc": 0.993301,
+      "val_loss": 0.083207
+    },
+    "trained_at": "2026-11-08T00:39:41+00:00",
+    "params": {
+      "C": 10,
+      "class_weight": null,
+      "max_iter": 500,
+      "tol": 0.001,
+      "cv_folds": 3
+    },
+    "sizes": {
+      "train": 40000,
+      "test": 10000,
+      "validation": 10000
+    },
+    "learning_curves": {
+      "steps": [
+        10,
+        20,
+        30,
+        40,
+        50,
+        60,
+        70,
+        80,
+        90,
+        100
+      ],
+      "train_loss": [
+        0.083358,
+        0.087126,
+        0.081773,
+        0.083126,
+        0.083426,
+        0.080982,
+        0.081642,
+        0.082381,
+        0.08308,
+        0.082997
+      ],
+      "train_accuracy": [
+        0.97575,
+        0.97575,
+        0.978167,
+        0.97775,
+        0.97785,
+        0.977917,
+        0.977607,
+        0.978,
+        0.977444,
+        0.977125
+      ],
+      "train_f1": [
+        0.974359,
+        0.974574,
+        0.977166,
+        0.976856,
+        0.976895,
+        0.976999,
+        0.976725,
+        0.977118,
+        0.976556,
+        0.976195
+      ],
+      "test_loss": [
+        0.085751,
+        0.083552,
+        0.080633,
+        0.076885,
+        0.078317,
+        0.074899,
+        0.07493,
+        0.073857,
+        0.07659,
+        0.076927
+      ],
+      "test_accuracy": [
+        0.9752,
+        0.9755,
+        0.9772,
+        0.9781,
+        0.978,
+        0.9788,
+        0.979,
+        0.9791,
+        0.9779,
+        0.978
+      ],
+      "test_f1": [
+        0.974204,
+        0.974455,
+        0.976225,
+        0.977142,
+        0.977016,
+        0.977866,
+        0.978088,
+        0.978186,
+        0.976943,
+        0.977059
+      ]
+    },
+    "recall_par_type": [
+      {
+        "type": "MitM",
+        "n": 1,
+        "recall": 0.0
+      },
+      {
+        "type": "fuzzing",
+        "n": 13,
+        "recall": 0.0
+      },
+      {
+        "type": "C&C",
+        "n": 25,
+        "recall": 0.48
+      },
+      {
+        "type": "TCP Relay",
+        "n": 27,
+        "recall": 0.5185185185
+      },
+      {
+        "type": "Discovering_resources",
+        "n": 291,
+        "recall": 0.5841924399
+      },
+      {
+        "type": "Modbus_register_reading",
+        "n": 77,
+        "recall": 0.8441558442
+      },
+      {
+        "type": "Generic_scanning",
+        "n": 648,
+        "recall": 0.9953703704
+      },
+      {
+        "type": "RDOS",
+        "n": 1712,
+        "recall": 0.9982476636
+      },
+      {
+        "type": "BruteForce",
+        "n": 552,
+        "recall": 1.0
+      },
+      {
+        "type": "Dictionary",
+        "n": 40,
+        "recall": 1.0
+      },
+      {
+        "type": "Exfiltration",
+        "n": 287,
+        "recall": 1.0
+      },
+      {
+        "type": "False_data_injection",
+        "n": 67,
+        "recall": 1.0
+      },
+      {
+        "type": "MQTT_cloud_broker_subscription",
+        "n": 294,
+        "recall": 1.0
+      },
+      {
+        "type": "Reverse_shell",
+        "n": 9,
+        "recall": 1.0
+      },
+      {
+        "type": "Scanning_vulnerability",
+        "n": 638,
+        "recall": 1.0
+      },
+      {
+        "type": "insider_malcious",
+        "n": 183,
+        "recall": 1.0
+      }
+    ]
+  }
 }

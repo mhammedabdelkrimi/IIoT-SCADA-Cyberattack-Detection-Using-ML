@@ -17,12 +17,12 @@ stages:
       size: 4362939
     - path: src/features.py
       hash: md5
-      md5: 7bf0a4c54c7f10383069af606aa7f4e6
-      size: 4067
+      md5: 364580cda03846b1cdd086ac8a6fcecd
+      size: 4248
     - path: src/train.py
       hash: md5
-      md5: b532976e027e9d11a59053911ea3a2a9
-      size: 5473
+      md5: 6078e4ec03d8a4fd8e9eae507e4f1120
+      size: 6693
     outs:
     - path: models/candidate.pkl
       hash: md5
@@ -32,3 +32,7 @@ stages:
       hash: md5
       md5: cb39e594b448b3011dfc7da88475b0d9
       size: 488
+    - path: reports/model_card.json
+      hash: md5
+      md5: 43337fd0b950e6094b9db33f036620d1
+      size: 3014

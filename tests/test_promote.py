@@ -65,3 +65,4 @@ def test_promotion_exports_features_json(tmp_path, fitted_pipe):
     assert "Duration" in feats["columns"]
     assert "class3" not in feats["columns"]
     assert "Scr_IP" not in feats["columns"]
+    assert feats["model_card"]["metrics"]["val_f1"] == 0.9
