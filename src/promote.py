@@ -31,11 +31,12 @@ def should_promote(candidate_f1: float, production_f1) -> bool:
     return production_f1 is None or candidate_f1 > production_f1
 
 
-def export_features(model_file: Path, features_file: Path) -> None:
-    """Écrit la liste exacte des colonnes d'entrée du modèle promu (contrat d'entrée de l'API)."""
+def export_features(model_file: Path, features_file: Path, card=None) -> None:
+    """Écrit les colonnes d'entrée du modèle promu (contrat de l'API) + sa fiche de performance."""
     try:
         clean = joblib.load(model_file).named_steps["clean"]
-        payload = {"columns": clean.columns_, "categorical": CAT, "dropped": DROP}
+        payload = {"columns": clean.columns_, "categorical": CAT, "dropped": DROP,
+                   "model_card": card or {}}
     except (AttributeError, KeyError):
         print("features non exportées : modèle non reconnu")
         return
@@ -43,7 +44,7 @@ def export_features(model_file: Path, features_file: Path) -> None:
     features_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
-def promote(tag: str, root: str = ".") -> bool:
+def promote(tag: str, root: str = ".", force: bool = False) -> bool:
     root = Path(root)
     metrics = json.loads((root / "reports/metrics.json").read_text(encoding="utf-8"))
     ref = root / f"reports/production_{tag}.json"
@@ -52,12 +53,21 @@ def promote(tag: str, root: str = ".") -> bool:
     ok = should_promote(cand, prod)
 
     print(f"[{tag}] val_f1 candidat = {cand} | val_f1 production = {prod}")
+    if not ok and force:
+        print("--force : promotion forcée (régénère le modèle de production et sa fiche).")
+        ok = True
     if ok:
         dest = root / model_path(tag)
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(root / "models/candidate.pkl", dest)
         ref.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
-        export_features(dest, root / features_path(tag))
+        card = {"metrics": metrics}
+        extra = root / "reports/model_card.json"      # écrit par train.py
+        if extra.exists():
+            card.update(json.loads(extra.read_text(encoding="utf-8")))
+        else:
+            print("ATTENTION : reports/model_card.json absent (lancez dvc repro) : fiche incomplète.")
+        export_features(dest, root / features_path(tag), card)
         print(f"=> PROMU : le candidat devient le modèle de production ({dest}).")
     else:
         print("=> REFUSÉ : modèle actuel conservé.")
@@ -67,8 +77,10 @@ def promote(tag: str, root: str = ".") -> bool:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tag", default="full", help="full = votre PC, ci = GitHub Actions")
+    ap.add_argument("--force", action="store_true",
+                    help="promeut même sans amélioration (à utiliser pour régénérer la fiche)")
     args = ap.parse_args()
-    ok = promote(args.tag)
+    ok = promote(args.tag, force=args.force)
     out = os.getenv("GITHUB_OUTPUT")          # lu par la CI pour décider du build
     if out:
         with open(out, "a") as f:

@@ -20,7 +20,7 @@ def load_current(log_path, min_requests):
     log = Path(log_path)
     if not log.exists():
         return None
-    cur = pd.read_csv(log).drop(columns=["prediction", "probability_attack"], errors="ignore")
+    cur = pd.read_csv(log).drop(columns=["prediction", "probability_attack", "received_at"], errors="ignore")
     if len(cur) < min_requests:
         return None
     return cur

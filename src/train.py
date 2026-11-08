@@ -2,6 +2,7 @@
 import json
 import os
 import warnings
+from datetime import datetime, timezone
 from pathlib import Path
 
 import joblib
@@ -20,6 +21,11 @@ from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_sp
 from src.features import build_pipeline
 
 load_dotenv()   # lit .env ; ne remplace pas les variables déjà définies
+
+# Backblaze B2 refuse les sommes de contrôle ajoutées par défaut par boto3 >= 1.36
+# (erreur "BadStatusLine" / "Connection was closed" à l'envoi des artefacts MLflow).
+os.environ.setdefault("AWS_REQUEST_CHECKSUM_CALCULATION", "when_required")
+os.environ.setdefault("AWS_RESPONSE_CHECKSUM_VALIDATION", "when_required")
 
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
@@ -88,11 +94,11 @@ def main():
     metrics = {k: round(float(v), 6) for k, v in metrics.items()}
 
     Path("reports").mkdir(exist_ok=True)
-    pd.DataFrame(gs.cv_results_)[["param_clf__C", "param_clf__class_weight",
-                                  "mean_train_score", "mean_test_score"]] \
-        .to_csv("reports/grid_search.csv", index=False)
-    recall_per_type(best, Xte, yte, d.get("type_column", "class1")) \
-        .to_csv("reports/recall_par_type.csv", index=False)
+    grid_df = pd.DataFrame(gs.cv_results_)[["param_clf__C", "param_clf__class_weight",
+                                            "mean_train_score", "mean_test_score"]]
+    grid_df.to_csv("reports/grid_search.csv", index=False)
+    rec = recall_per_type(best, Xte, yte, d.get("type_column", "class1"))
+    rec.to_csv("reports/recall_par_type.csv", index=False)
 
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"))
     mlflow.set_experiment(os.getenv("MLFLOW_EXPERIMENT_NAME", p["mlflow"]["experiment"]))
@@ -105,21 +111,37 @@ def main():
         mlflow.log_metrics(metrics)
 
         # Courbes d'apprentissage : loss, accuracy, F1 selon la part du Train utilisée
+        lc = {"steps": []}
         for frac in np.linspace(0.1, 1.0, 10):
             n = int(len(Xtr) * frac)
             m = clone(best).fit(Xtr.iloc[:n], ytr.iloc[:n])
             step = int(round(frac * 100))
+            lc["steps"].append(step)
             for name, Xs, ys in (("train", Xtr.iloc[:n], ytr.iloc[:n]), ("test", Xte, yte)):
                 proba = m.predict_proba(Xs)[:, 1]
                 pred = m.predict(Xs)
-                mlflow.log_metric(f"lc_{name}_loss", log_loss(ys, proba, labels=[0, 1]), step=step)
-                mlflow.log_metric(f"lc_{name}_accuracy", accuracy_score(ys, pred), step=step)
-                mlflow.log_metric(f"lc_{name}_f1", f1_score(ys, pred, zero_division=0), step=step)
+                vals = {"loss": log_loss(ys, proba, labels=[0, 1]),
+                        "accuracy": accuracy_score(ys, pred),
+                        "f1": f1_score(ys, pred, zero_division=0)}
+                for k, v in vals.items():
+                    mlflow.log_metric(f"lc_{name}_{k}", v, step=step)
+                    lc.setdefault(f"{name}_{k}", []).append(round(float(v), 6))
 
         mlflow.log_artifact("reports/grid_search.csv")
         mlflow.log_artifact("reports/recall_par_type.csv")
         mlflow.sklearn.log_model(best, "model",
                                  registered_model_name=p["mlflow"]["registered_model"])
+
+    card = {   # lu par promote.py puis affiché dans le tableau de bord
+        "trained_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "params": {"C": gs.best_params_["clf__C"],
+                   "class_weight": gs.best_params_["clf__class_weight"],
+                   "max_iter": mp["max_iter"], "tol": mp["tol"], "cv_folds": mp["cv_folds"]},
+        "sizes": {"train": len(Xtr), "test": len(Xte), "validation": len(Xv)},
+        "learning_curves": lc,
+        "recall_par_type": json.loads(rec.to_json(orient="records")),
+    }
+    Path("reports/model_card.json").write_text(json.dumps(card, indent=2), encoding="utf-8")
 
     Path("models").mkdir(exist_ok=True)
     joblib.dump(best, "models/candidate.pkl")

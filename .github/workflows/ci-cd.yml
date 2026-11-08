@@ -100,7 +100,7 @@ jobs:
           path: models
       - name: Construire l'image
         run: |
-          docker build \
+          docker build --target api \
             --build-arg MODEL_FILE=models/model_ci.pkl \
             --build-arg FEATURES_FILE=models/features_ci.json \
             -t ids-api:ci .

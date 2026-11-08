@@ -8,8 +8,14 @@ services:
       - "8000:8000"
     environment:
       VALIDATION_STATUS: ${VALIDATION_STATUS:-422}
+      MODEL_PATH: /app/models/model.pkl
+      FEATURES_PATH: /app/models/features.json
+      PROD_LOG_PATH: /app/data/production/requests.csv
     volumes:
-      - ./logs:/app/logs
+      - ./models:/app/models:ro                       # modèle promu + features.json (fiche du tableau de bord)
+      - ./data/production:/app/data/production        # journal des requêtes (lu par le monitoring)
+      - ./data/raw:/app/data/raw:ro                   # flux réels du bouton "Charger un flux réel"
+      - ./reports:/app/reports:ro                     # état de la dérive affiché dans le tableau de bord
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
@@ -24,10 +30,11 @@ services:
       target: monitor
     image: ids-monitor
     command: sh -c "while true; do python -m src.monitoring; sleep 604800; done"
+    environment:
+      PROD_LOG_PATH: /app/data/production/requests.csv
     volumes:
-      - ./logs:/app/logs
-      - ./reports:/app/reports
-      - ./data:/app/data:ro
+      - ./data:/app/data:ro                           # jeu d'entraînement (référence) + journal des requêtes
+      - ./reports:/app/reports                        # rapport de dérive écrit ici
     depends_on:
       api:
         condition: service_healthy

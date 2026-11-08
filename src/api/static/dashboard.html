@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IDS Console · Détection d’intrusion IIoT / SCADA</title>
+<style>
+:root{
+  --bg:#060608; --bg2:#0b0b0f; --panel:#111116; --panel2:#17171d; --line:#27272f; --line2:#34343f;
+  --text:#f4f4f6; --text2:#c4c4cd; --muted:#85858f; --on-accent:#fff;
+  --accent:#ef2b2d; --accent2:#ff6a4d; --glow:rgba(239,43,45,.28);
+  --ok:#34d399; --danger:#ff4d4f; --warnc:#ffb020;
+  --ok-bg:rgba(52,211,153,.13); --danger-bg:rgba(255,77,79,.14); --warn-bg:rgba(255,176,32,.14); --acc-bg:rgba(239,43,45,.14);
+  --c1:#ef2b2d; --c2:#f4f4f6; --c3:#ff8a3d; --c4:#8c8c98; --c5:#ff5c8a; --c6:#ffd166; --c7:#b3202a; --c8:#c9c9d1;
+  --grid:rgba(255,255,255,.08); --shadow:0 10px 34px rgba(0,0,0,.45);
+  --halo1:rgba(239,43,45,.16); --halo2:rgba(255,106,77,.07);
+  --mono:"JetBrains Mono","SFMono-Regular",Consolas,Menlo,monospace;
+  --sans:"Inter","Segoe UI",-apple-system,Roboto,Helvetica,Arial,sans-serif;
+}
+[data-theme="light"]{
+  --bg:#eef3fb; --bg2:#ffffff; --panel:#ffffff; --panel2:#f6f9fe; --line:#d9e3f2; --line2:#c3d2e8;
+  --text:#0f2342; --text2:#34507a; --muted:#6a7f9f; --on-accent:#fff;
+  --accent:#1d5fd6; --accent2:#0ea5e9; --glow:rgba(29,95,214,.22);
+  --ok:#059669; --danger:#dc2626; --warnc:#d97706;
+  --ok-bg:#e3f6ee; --danger-bg:#fdeaea; --warn-bg:#fff2dc; --acc-bg:#e6efff;
+  --c1:#1d5fd6; --c2:#0ea5e9; --c3:#6366f1; --c4:#64748b; --c5:#0891b2; --c6:#f59e0b; --c7:#1e3a8a; --c8:#38bdf8;
+  --grid:rgba(30,70,140,.14); --shadow:0 6px 22px rgba(20,50,100,.10);
+  --halo1:rgba(29,95,214,.12); --halo2:rgba(14,165,233,.08);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font:14px/1.55 var(--sans);color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background:
+ radial-gradient(900px 420px at 88% -8%,var(--halo1),transparent 62%),radial-gradient(700px 420px at -5% 108%,var(--halo2),transparent 62%)}
+.app{position:relative;z-index:1;display:grid;grid-template-columns:262px 1fr;min-height:100vh}
+aside{background:var(--bg2);border-right:1px solid var(--line);position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
+.brand{display:flex;gap:12px;align-items:center;padding:22px 20px;border-bottom:1px solid var(--line)}
+.logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;box-shadow:0 6px 20px var(--glow);flex:none}
+.logo svg{width:24px;height:24px}
+.brand b{display:block;font-size:16px;letter-spacing:.03em}
+.brand small{color:var(--muted);font-size:11.5px}
+.navlabel{padding:18px 22px 8px;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:700}
+nav{padding:0 12px;flex:1}
+nav a{display:flex;gap:11px;align-items:center;padding:10px 12px;margin:2px 0;border-radius:9px;color:var(--text2);text-decoration:none;font-weight:500;font-size:13.5px;transition:.15s}
+nav a svg{width:17px;height:17px;opacity:.8;flex:none}
+nav a:hover{background:var(--panel2);color:var(--text)}
+nav a.active{background:linear-gradient(90deg,var(--acc-bg),transparent);color:var(--text);box-shadow:inset 3px 0 0 var(--accent)}
+nav a.active svg{color:var(--accent);opacity:1}
+.foot{padding:16px 20px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.foot a{display:block;margin-top:8px;color:var(--accent);text-decoration:none;font-weight:600}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--muted);margin-right:8px;vertical-align:middle}
+.dot.on{background:var(--ok);box-shadow:0 0 0 4px var(--ok-bg)}
+.dot.off{background:var(--danger);box-shadow:0 0 0 4px var(--danger-bg)}
+main{padding:0 34px 60px;min-width:0}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+.pills{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pill{padding:4px 11px;border:1px solid var(--line);background:var(--panel);border-radius:999px;font:12px var(--mono);color:var(--text2)}
+.pill.live::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);margin-right:7px;animation:pulse 1.6s infinite}
+@keyframes pulse{50%{opacity:.25}}
+.iconbtn{font:inherit;font-weight:600;border:1px solid var(--line2);background:var(--panel);color:var(--text2);border-radius:999px;padding:4px 14px;cursor:pointer}
+.iconbtn:hover{border-color:var(--accent);color:var(--text)}
+header.top{padding:22px 0 4px}
+header.top h1{margin:0;font-size:26px;letter-spacing:-.01em}
+header.top p{margin:4px 0 18px;color:var(--muted)}
+.view[hidden]{display:none}
+.grid{display:grid;gap:16px}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:var(--shadow);min-width:0}
+.card h2{margin:0 0 4px;font-size:15px}
+.card h3{margin:16px 0 6px;font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:.09em}
+.card p{margin:7px 0;color:var(--text2)}
+.hint{color:var(--muted)!important;font-size:12.5px}
+.sect{display:flex;align-items:center;gap:12px;margin:28px 0 14px;font-size:11.5px;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);font-weight:700}
+.sect::before{content:"";width:18px;height:3px;border-radius:2px;background:var(--accent)}
+.sect::after{content:"";flex:1;height:1px;background:var(--line)}
+.hero{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);align-items:center;gap:10px;padding:26px 30px;border-radius:16px;border:1px solid var(--line);background:linear-gradient(120deg,var(--panel),var(--panel2));box-shadow:var(--shadow);margin-bottom:16px}
+.hero h2{margin:0 0 8px;font-size:23px;letter-spacing:-.01em}
+.hero p{margin:0 0 14px;color:var(--text2);max-width:560px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{padding:4px 11px;border-radius:999px;background:var(--acc-bg);color:var(--accent);font-weight:700;font-size:12px;border:1px solid var(--line)}
+.hero svg{width:100%;height:auto;max-height:230px}
+.kpi{position:relative;overflow:hidden}
+.kpi::after{content:"";position:absolute;right:-28px;top:-28px;width:104px;height:104px;border-radius:50%;background:var(--kc,var(--accent));opacity:.13}
+.kpi .label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.kpi .value{font:700 31px var(--mono);margin-top:8px;color:var(--kc,var(--text))}
+.kpi .note{font-size:12px;color:var(--muted);margin-top:3px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px 11px;text-align:left;border-bottom:1px solid var(--line)}
+th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+td.num,th.num{text-align:right;font-family:var(--mono)}
+tr:hover td{background:var(--acc-bg)}
+.scroll{overflow-x:auto}
+.badge{display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700}
+.badge.attack,.badge.danger{background:var(--danger-bg);color:var(--danger)}
+.badge.normal,.badge.ok{background:var(--ok-bg);color:var(--ok)}
+.badge.warn{background:var(--warn-bg);color:var(--warnc)}
+.badge.neutral{background:var(--acc-bg);color:var(--accent)}
+.btn{font:inherit;font-weight:700;padding:10px 18px;border-radius:9px;border:0;background:linear-gradient(135deg,var(--accent),var(--accent2));color:var(--on-accent);cursor:pointer;box-shadow:0 6px 18px var(--glow);transition:.15s}
+.btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn:disabled{opacity:.5;cursor:default;transform:none}
+.btn.secondary{background:transparent;color:var(--text2);border:1px solid var(--line2);box-shadow:none}
+.btn.secondary:hover{border-color:var(--accent);color:var(--text);background:var(--acc-bg)}
+.btn-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.fgroup{margin-top:16px}
+.fgroup>.t{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:8px}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px 14px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field span{font:600 11.5px var(--mono);color:var(--text2)}
+.field small{color:var(--muted);font-size:11px}
+.field input,.search{font:inherit;padding:10px 12px;border:1px solid var(--line2);border-radius:9px;background:var(--bg);color:var(--text);width:100%;transition:.15s}
+.field input::placeholder,.search::placeholder{color:var(--muted);opacity:.7}
+.field input:focus,.search:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--glow)}
+details{margin-top:18px;border-top:1px solid var(--line);padding-top:12px}
+summary{cursor:pointer;font-weight:700;color:var(--accent)}
+.notice{padding:12px 15px;border-radius:10px;font-size:13px;margin-bottom:14px;border:1px solid var(--line)}
+.notice.warn{background:var(--warn-bg);color:var(--warnc)}
+.notice.danger{background:var(--danger-bg);color:var(--danger)}
+.notice.info{background:var(--acc-bg);color:var(--text2)}
+code{font:12px var(--mono);background:var(--bg);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+.verdict{display:flex;align-items:center;gap:16px;padding:16px 18px;border-radius:12px;border:1px solid var(--line)}
+.verdict.attack{background:var(--danger-bg)}.verdict.normal{background:var(--ok-bg)}
+.v-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.v-main{font-size:23px;font-weight:800}
+.verdict.attack .v-main{color:var(--danger)}.verdict.normal .v-main{color:var(--ok)}
+.bars .row{display:grid;grid-template-columns:170px 1fr 62px;gap:12px;align-items:center;margin:9px 0;font-size:12.5px}
+.bars .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)}
+.bars .track{background:var(--bg);height:12px;border-radius:6px;position:relative;border:1px solid var(--line)}
+.bars .bar{height:100%;border-radius:6px}
+.bars .val{font-family:var(--mono);text-align:right}
+.div .track::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--muted)}
+.div .bar{position:absolute;top:0;bottom:0}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:middle}
+svg text{font:10.5px var(--mono);fill:var(--muted)}
+svg .t-main{fill:var(--text);font:700 24px var(--mono)}
+.chart svg{width:100%;height:auto;display:block}
+.donutwrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.donutwrap svg{width:170px;height:170px;flex:none}
+.dl{flex:1;min-width:150px;font-size:12.5px}
+.dl div{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px dashed var(--line)}
+.dl i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:8px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;font-size:13px}
+.kv dt{color:var(--muted)}.kv dd{margin:0;text-align:right;font-family:var(--mono)}
+ul.clean{margin:8px 0 0;padding-left:18px}ul.clean li{margin:6px 0;color:var(--text2)}
+.atk{border-left:4px solid var(--ac,var(--accent))}
+.atk h3{margin:0 0 4px;font-size:14.5px;text-transform:none;letter-spacing:0;color:var(--text)}
+.atk .meta{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 8px}
+.atk p{font-size:12.5px;margin:6px 0 0}
+.flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.step{position:relative;background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:14px;padding:18px 20px;overflow:hidden}
+.step::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.step .n{font:700 11.5px var(--mono);color:var(--accent);letter-spacing:.08em}
+.step h3{margin:6px 0 8px;text-transform:none;letter-spacing:0;font-size:14.5px;color:var(--text)}
+.step p{margin:0;font-size:13px;color:var(--text2)}
+.step .tool{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line2);font:11.5px var(--mono);color:var(--muted)}
+pre{background:var(--bg);border:1px solid var(--line);color:var(--text2);padding:14px;border-radius:10px;overflow:auto;font:12px/1.6 var(--mono);margin:10px 0 0}
+.empty{padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--line2);border-radius:12px;font-size:13px}
+.diag .it{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:7px 0;border-bottom:1px dashed var(--line);font-size:13px}
+@media (max-width:1150px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(2,minmax(0,1fr))}.flow{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{grid-template-columns:1fr}}
+@media (max-width:860px){
+ .app{grid-template-columns:1fr}aside{position:static;height:auto}.navlabel,.foot{display:none}
+ nav{display:flex;flex-wrap:wrap;padding:8px 10px}main{padding:0 14px 50px}
+ .g4,.g3,.g2,.flow{grid-template-columns:1fr}
+ [style*="grid-template-columns:minmax"]{grid-template-columns:1fr!important}
+ .bars .row{grid-template-columns:110px 1fr 56px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+  <div class="brand">
+    <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg></div>
+    <div><b>IDS Console</b><small>IIoT · SCADA · Machine Learning</small></div>
+  </div>
+  <div class="navlabel">Navigation</div>
+  <nav id="nav">
+    <a href="#overview" data-view="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Vue d’ensemble</a>
+    <a href="#detect" data-view="detect"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>Analyse d’un flux</a>
+    <a href="#attacks" data-view="attacks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z"/><path d="M12 8v5M12 16h.01"/></svg>Catégories d’attaques</a>
+    <a href="#model" data-view="model"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>Performance du modèle</a>
+    <a href="#monitor" data-view="monitor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Surveillance</a>
+    <a href="#arch" data-view="arch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M7 6h10M6 8l5 8M18 8l-5 8"/></svg>Architecture MLOps</a>
+  </nav>
+  <div class="foot">
+    <div><span id="statusDot" class="dot"></span><span id="statusText">Connexion…</span></div>
+    <a href="/docs">Documentation de l’API →</a>
+  </div>
+</aside>
+
+<main>
+  <div class="topbar">
+    <div>IDS Console <span style="opacity:.5">/</span> <b id="crumb" style="color:var(--text2)">Vue d’ensemble</b></div>
+    <div class="pills">
+      <span class="pill">Régression logistique</span>
+      <span class="pill">Jeu : X-IIoTID</span>
+      <span class="pill live" id="clock">--:--:--</span>
+      <button class="iconbtn" id="btnTheme">Thème</button>
+    </div>
+  </div>
+  <header class="top"><h1 id="pageTitle"></h1><p id="pageSub"></p></header>
+  <div id="banner"></div>
+
+  <!-- ========== VUE D’ENSEMBLE ========== -->
+  <section id="view-overview" class="view" hidden>
+    <div class="hero">
+      <div>
+        <h2>Détection d’intrusion dans un réseau industriel</h2>
+        <p>Chaque flux réseau IIoT / SCADA est classé <strong>Normal</strong> ou <strong>Attack</strong> par un modèle de machine learning, expliqué variable par variable, puis surveillé en production pour détecter la dérive des données.</p>
+        <div class="chips"><span class="chip">Cybersécurité industrielle</span><span class="chip">Machine learning</span><span class="chip">MLOps</span></div>
+      </div>
+      <svg viewBox="0 0 420 230" aria-hidden="true">
+        <defs><linearGradient id="hg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent2)"/></linearGradient></defs>
+        <g stroke="var(--line2)" stroke-width="1.4" fill="none">
+          <path d="M30 40 L120 80 M30 190 L120 150 M390 40 L300 80 M390 190 L300 150 M30 115 L110 115 M390 115 L310 115 M120 80 L210 30 L300 80 M120 150 L210 205 L300 150"/>
+        </g>
+        <g fill="var(--panel2)" stroke="var(--accent)" stroke-width="2">
+          <circle cx="30" cy="40" r="10"/><circle cx="30" cy="190" r="10"/><circle cx="30" cy="115" r="10"/>
+          <circle cx="390" cy="40" r="10"/><circle cx="390" cy="190" r="10"/><circle cx="390" cy="115" r="10"/>
+          <circle cx="210" cy="30" r="8"/><circle cx="210" cy="205" r="8"/>
+        </g>
+        <path d="M210 52 L276 78 V124 C276 160 248 184 210 194 C172 184 144 160 144 124 V78 Z" fill="url(#hg)" opacity=".95"/>
+        <path d="M210 52 L276 78 V124 C276 160 248 184 210 194 C172 184 144 160 144 124 V78 Z" fill="none" stroke="var(--text)" stroke-opacity=".25" stroke-width="2"/>
+        <path d="M180 122 l22 22 l40 -46" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+        <g fill="var(--danger)"><circle cx="75" cy="62" r="4"><animate attributeName="opacity" values="1;.2;1" dur="1.8s" repeatCount="indefinite"/></circle><circle cx="345" cy="170" r="4"><animate attributeName="opacity" values="1;.2;1" dur="2.2s" repeatCount="indefinite"/></circle></g>
+      </svg>
+    </div>
+    <div class="grid g4" id="kpiModel"></div>
+    <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) minmax(0,1fr);margin-top:16px">
+      <div class="card"><h2>Trafic reçu en production</h2><p class="hint">Répartition des verdicts du modèle.</p><div id="ovDonut"></div></div>
+      <div class="card"><h2>Profil de performance</h2><p class="hint">Cinq métriques par jeu de données.</p><div class="chart" id="ovRadar"></div></div>
+      <div class="card"><h2>Modèle en production</h2><dl class="kv" id="ovKv"></dl><div id="ovKvEmpty"></div></div>
+    </div>
+    <div class="sect">Catégories d’attaques du jeu de données</div>
+    <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)">
+      <div class="card"><h2>Répartition des familles</h2><p class="hint">Attaques du jeu de test, par famille.</p><div id="ovFamilies"></div></div>
+      <div class="card"><h2>Détection par famille (rappel)</h2><p class="hint">Les familles les plus difficiles sont en tête.</p><div class="bars" id="ovRecall"></div></div>
+    </div>
+    <div class="sect">Activité en production</div>
+    <div class="grid g4" id="kpiProd"></div>
+    <div class="sect">État des données</div>
+    <div class="card diag" id="diag"></div>
+  </section>
+
+  <!-- ========== ANALYSE D’UN FLUX ========== -->
+  <section id="view-detect" class="view" hidden>
+    <div class="grid" style="grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start">
+      <div class="card">
+        <h2>Caractéristiques du flux réseau</h2>
+        <p class="hint">Champs vides : remplacés par la médiane (numériques) ou la valeur la plus fréquente (catégories) apprise à l’entraînement.</p>
+        <div class="fgroup"><div class="t">Identité du flux</div><div class="fields" id="grpId"></div></div>
+        <div class="fgroup"><div class="t">Volumétrie et durée</div><div class="fields" id="grpVol"></div></div>
+        <datalist id="dl-Protocol"><option value="tcp"><option value="udp"><option value="icmp"></datalist>
+        <datalist id="dl-anomaly_alert"><option value="TRUE"><option value="FALSE"></datalist>
+        <details>
+          <summary>Paramètres avancés (<span id="advCount">0</span> variables)</summary>
+          <p style="margin-top:10px"><input class="search" id="advSearch" type="search" placeholder="Filtrer les variables…"></p>
+          <div class="fields" id="advFields" style="margin-top:12px"></div>
+        </details>
+        <div class="btn-row">
+          <button class="btn" id="btnAnalyze">Analyser le flux</button>
+          <button class="btn secondary" id="btnAttack">Flux d’attaque réel</button>
+          <button class="btn secondary" id="btnNormal">Flux normal réel</button>
+          <button class="btn secondary" id="btnReset">Réinitialiser</button>
+        </div>
+        <p class="hint" style="margin-top:12px">Les flux réels viennent du jeu de validation, jamais utilisé pour l’apprentissage. Après analyse, la prédiction est comparée à l’étiquette réelle.</p>
+      </div>
+      <div>
+        <div id="notice"></div>
+        <div class="card" id="resultCard"><h2>Résultat de l’analyse</h2><p class="hint">Aucune analyse. Renseignez un flux ou chargez un flux réel, puis lancez l’analyse.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== CATÉGORIES D’ATTAQUES ========== -->
+  <section id="view-attacks" class="view" hidden>
+    <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)">
+      <div class="card"><h2>Répartition des attaques</h2><p class="hint">Nombre d’attaques par famille dans le jeu de test.</p><div id="atkDonut"></div></div>
+      <div class="card"><h2>Taux de détection par famille</h2><p class="hint">Vert : au moins 95 %. Orange : 80 à 95 %. Rouge : moins de 80 %.</p><div class="bars" id="atkRecall"></div></div>
+    </div>
+    <div class="sect">Fiches par famille d’attaque</div>
+    <div class="grid g3" id="atkCards"></div>
+    <div class="sect">Notions de sécurité</div>
+    <div class="grid g2">
+      <div class="card"><h2>Rôle d’un IDS</h2><p>Un système de détection d’intrusion observe un réseau (NIDS) ou une machine (HIDS) et alerte lorsqu’il repère un comportement malveillant. Un IPS va plus loin en bloquant le trafic.</p><p class="hint">Ici, l’analyse porte sur des statistiques de flux (durée, volumes, paquets, protocole, service), pas sur le contenu des paquets.</p></div>
+      <div class="card"><h2>Faux positifs et faux négatifs</h2><p>Un <strong>faux négatif</strong> est une attaque manquée (rappel). Un <strong>faux positif</strong> est une fausse alerte (précision).</p><p class="hint">En environnement SCADA, une attaque manquée peut toucher la sécurité d’un procédé : le rappel est prioritaire.</p></div>
+      <div class="card"><h2>Lire un résultat</h2>
+        <table><tr><th>Probabilité d’attaque</th><th>Niveau</th></tr>
+        <tr><td>moins de 20 %</td><td><span class="badge ok">Faible</span></td></tr>
+        <tr><td>20 % à 50 %</td><td><span class="badge warn">Modéré</span></td></tr>
+        <tr><td>50 % à 80 %</td><td><span class="badge danger">Élevé</span></td></tr>
+        <tr><td>plus de 80 %</td><td><span class="badge danger">Critique</span></td></tr></table>
+        <p class="hint">Au-dessus de 50 %, le flux est classé Attack. Les niveaux sont une convention de présentation.</p></div>
+      <div class="card"><h2>Variables déterminantes</h2><p>Pour une régression logistique, la contribution d’une variable est son coefficient multiplié par sa valeur transformée. Positive : pousse vers Attack. Négative : pousse vers Normal.</p><p class="hint">Explication exacte pour un modèle linéaire uniquement.</p></div>
+    </div>
+  </section>
+
+  <!-- ========== PERFORMANCE ========== -->
+  <section id="view-model" class="view" hidden>
+    <div id="modelEmpty"></div>
+    <div id="modelBody" hidden>
+      <div class="grid" style="grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)">
+        <div class="card"><h2>Métriques par jeu de données</h2><p class="hint">Classe positive : Attack. La validation décide de la promotion du modèle.</p><div class="scroll"><table id="metricTable"></table></div></div>
+        <div class="card"><h2>Apprentissage / test / validation</h2><p class="hint">Des points éloignés signalent du surapprentissage.</p><div id="dotplot"></div></div>
+      </div>
+      <div class="sect">Courbes d’apprentissage</div>
+      <div class="grid g2">
+        <div class="card"><h2>Perte (log-loss)</h2><p class="hint">Selon la part du jeu d’entraînement utilisée.</p><div class="chart" id="lcLoss"></div></div>
+        <div class="card"><h2>Exactitude</h2><p class="hint">Proportion de flux correctement classés.</p><div class="chart" id="lcAcc"></div></div>
+      </div>
+      <div class="sect">Détection par type d’attaque</div>
+      <div class="card"><h2>Rappel par famille</h2><p class="hint">Le nombre d’attaques testées est indiqué à côté du nom.</p><div class="bars" id="recallBars"></div></div>
+      <div class="sect">Hyperparamètres et données</div>
+      <div class="card"><dl class="kv" id="modelKv" style="grid-template-columns:repeat(2,auto 1fr)"></dl></div>
+      <div class="sect">Lecture critique</div>
+      <div class="grid g2">
+        <div class="card"><ul class="clean">
+          <li>Séparation apprentissage/test aléatoire dans un même jeu : les flux d’une même attaque se ressemblent, le test est donc optimiste. La validation indépendante est plus représentative.</li>
+          <li>Un modèle linéaire capture mal les attaques proches du trafic normal : voir les familles à faible rappel.</li>
+          <li>Les scores décrivent le passé : une évolution du trafic dégrade la détection.</li></ul></div>
+        <div class="card chart"><h2>Modèle de classification</h2>
+          <svg viewBox="0 0 360 170" aria-hidden="true">
+            <g stroke="var(--line2)" stroke-width="1.2"><path d="M50 30L170 85M50 30L170 40M50 85L170 85M50 85L170 40M50 85L170 130M50 140L170 130M50 140L170 85M50 30L170 130"/><path d="M170 40L300 85M170 85L300 85M170 130L300 85"/></g>
+            <g fill="var(--panel)" stroke="var(--c1)" stroke-width="2.2"><circle cx="50" cy="30" r="10"/><circle cx="50" cy="85" r="10"/><circle cx="50" cy="140" r="10"/><circle cx="170" cy="40" r="10"/><circle cx="170" cy="85" r="10"/><circle cx="170" cy="130" r="10"/></g>
+            <circle cx="300" cy="85" r="15" fill="var(--c1)"/><text x="300" y="89" text-anchor="middle" style="fill:#fff;font-weight:700">P</text>
+            <text x="50" y="165" text-anchor="middle">flux</text><text x="170" y="165" text-anchor="middle">variables</text><text x="300" y="120" text-anchor="middle">probabilité</text>
+          </svg></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SURVEILLANCE ========== -->
+  <section id="view-monitor" class="view" hidden>
+    <div class="grid g4" id="kpiMon"></div>
+    <div class="grid" style="grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);margin-top:16px">
+      <div class="card"><h2>Distribution des probabilités d’attaque</h2><p class="hint">Un décalage durable peut signaler un changement du trafic.</p><div class="chart" id="hist"></div></div>
+      <div class="card" id="driftCard"></div>
+    </div>
+    <div class="sect">Évolution des dernières requêtes</div>
+    <div class="card"><h2>Probabilité d’attaque dans le temps</h2><p class="hint">Ligne pointillée : seuil de décision à 50 %.</p><div class="chart" id="timeline"></div></div>
+    <div class="sect">Journal</div>
+    <div class="card">
+      <div class="scroll"><table id="recent"></table></div>
+      <div class="btn-row"><button class="btn secondary" id="btnRefresh">Actualiser</button></div>
+      <p class="hint" style="margin-top:10px">Actualisation automatique toutes les 10 secondes.</p>
+    </div>
+  </section>
+
+  <!-- ========== ARCHITECTURE ========== -->
+  <section id="view-arch" class="view" hidden>
+    <div class="flow">
+      <div class="step"><div class="n">ÉTAPE 1</div><h3>Données versionnées</h3><p>Jeux de données et modèle stockés hors de Git ; Git ne garde que des pointeurs. Chaque version est reproductible.</p><div class="tool">DVC · Backblaze B2 (S3)</div></div>
+      <div class="step"><div class="n">ÉTAPE 2</div><h3>Entraînement et suivi</h3><p>Pipeline unique (nettoyage, imputation, transformations, modèle) avec recherche d’hyperparamètres. Paramètres, métriques et courbes enregistrés.</p><div class="tool">scikit-learn · MLflow</div></div>
+      <div class="step"><div class="n">ÉTAPE 3</div><h3>Déploiement sûr</h3><p>Le nouveau modèle n’est promu que si son F1 en validation est strictement supérieur à celui de production.</p><div class="tool">promote.py · val_f1</div></div>
+      <div class="step"><div class="n">ÉTAPE 4</div><h3>Intégration continue</h3><p>Tests, entraînement et construction de l’image à chaque modification poussée sur la branche principale.</p><div class="tool">GitHub Actions · pytest</div></div>
+      <div class="step"><div class="n">ÉTAPE 5</div><h3>Service d’inférence</h3><p>API qui valide chaque requête et renvoie une erreur explicite si les données sont mal formées.</p><div class="tool">FastAPI · Pydantic · Docker</div></div>
+      <div class="step"><div class="n">ÉTAPE 6</div><h3>Surveillance</h3><p>Les requêtes reçues sont comparées aux données d’entraînement ; un rapport de dérive est régénéré chaque semaine.</p><div class="tool">Evidently · tests KS et chi²</div></div>
+    </div>
+    <div class="sect">Points d’accès de l’API</div>
+    <div class="card">
+      <div class="scroll"><table>
+        <tr><th>Méthode</th><th>Chemin</th><th>Rôle</th></tr>
+        <tr><td><span class="badge neutral">GET</span></td><td class="num">/health</td><td>État du service et du modèle</td></tr>
+        <tr><td><span class="badge ok">POST</span></td><td class="num">/predict</td><td>Prédiction pour un flux (journalisée)</td></tr>
+        <tr><td><span class="badge ok">POST</span></td><td class="num">/explain</td><td>Contribution des variables</td></tr>
+        <tr><td><span class="badge neutral">GET</span></td><td class="num">/model-info</td><td>Colonnes d’entrée et fiche de performance</td></tr>
+        <tr><td><span class="badge neutral">GET</span></td><td class="num">/stats</td><td>Statistiques des requêtes et dérive</td></tr>
+        <tr><td><span class="badge neutral">GET</span></td><td class="num">/sample</td><td>Flux réel de validation</td></tr>
+      </table></div>
+<pre>curl -X POST http://127.0.0.1:8000/predict -H "Content-Type: application/json" \
+  -d '{"data": {"Protocol": "tcp", "Duration": 0.5, "Scr_bytes": 120}}'</pre>
+    </div>
+  </section>
+</main>
+</div>
+
+<script>
+(function () {
+"use strict";
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num = (v, d) => (v === null || v === undefined || Number.isNaN(v)) ? "n/d" : Number(v).toFixed(d === undefined ? 4 : d);
+const pct = (v, d) => (v === null || v === undefined) ? "n/d" : (v * 100).toFixed(d === undefined ? 1 : d) + " %";
+const V = n => "var(--" + n + ")";
+const PAL = [V("c1"), V("c3"), V("c2"), V("c5"), V("c6"), V("c4"), V("c7"), V("c8")];
+
+async function api(path, opts) {
+  try {
+    const r = await fetch(path, opts);
+    let body = null;
+    try { body = await r.json(); } catch (e) { body = null; }
+    return { ok: r.ok, status: r.status, body: body };
+  } catch (e) { return { ok: false, status: 0, body: { detail: "Service injoignable" } }; }
+}
+const state = { info: null, truth: null, view: "overview", stats: null, health: null };
+const VIEWS = {
+  overview: ["Vue d’ensemble", "Synthèse du système de détection, du modèle et de son activité en production"],
+  detect:   ["Analyse d’un flux", "Évaluer un flux réseau et comprendre la décision du modèle"],
+  attacks:  ["Catégories d’attaques", "Familles d’attaques présentes dans les données et capacité du modèle à les détecter"],
+  model:    ["Performance du modèle", "Métriques, courbes d’apprentissage et détection par type d’attaque"],
+  monitor:  ["Surveillance", "Requêtes reçues, distribution des scores et dérive des données"],
+  arch:     ["Architecture MLOps", "Chaîne de production, de déploiement et de surveillance"]
+};
+function show(view) {
+  if (!VIEWS[view]) view = "overview";
+  state.view = view;
+  $$(".view").forEach(v => { v.hidden = v.id !== "view-" + view; });
+  $$("#nav a").forEach(a => a.classList.toggle("active", a.dataset.view === view));
+  $("#pageTitle").textContent = VIEWS[view][0];
+  $("#pageSub").textContent = VIEWS[view][1];
+  $("#crumb").textContent = VIEWS[view][0];
+  if (view === "overview" || view === "monitor") loadStats();
+}
+window.addEventListener("hashchange", () => show(location.hash.slice(1)));
+function tick() { $("#clock").textContent = new Date().toLocaleTimeString("fr-FR"); }
+tick(); setInterval(tick, 1000);
+(function () {
+  let t = "dark";
+  try { t = localStorage.getItem("ids-theme") || "dark"; } catch (e) {}
+  document.documentElement.setAttribute("data-theme", t);
+  $("#btnTheme").addEventListener("click", () => {
+    t = t === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", t);
+    try { localStorage.setItem("ids-theme", t); } catch (e) {}
+  });
+})();
+
+/* ---------- description des familles d’attaques (X-IIoTID) ---------- */
+const ATK_EXACT = {
+  "MitM": ["Man-in-the-Middle", "L’attaquant s’interpose entre deux équipements pour écouter ou modifier leurs échanges."],
+  "fuzzing": ["Fuzzing", "Envoi de données malformées ou aléatoires pour provoquer des défaillances d’un service."],
+  "C&C": ["Commande et contrôle", "Canal de communication entre une machine compromise et l’opérateur de l’attaque."],
+  "TCP Relay": ["Relais TCP", "Redirection du trafic TCP par une machine compromise pour masquer l’origine de l’attaque."],
+  "Discovering_resources": ["Découverte de ressources", "Recherche des équipements et services présents sur le réseau avant l’attaque."],
+  "Modbus_register_reading": ["Lecture de registres Modbus", "Lecture des registres d’un équipement industriel Modbus pour connaître l’état du procédé."],
+  "Generic_scanning": ["Scan générique", "Balayage de machines et de ports pour repérer des cibles exposées."],
+  "RDOS": ["Déni de service (RDoS)", "Saturation d’un service pour le rendre indisponible."],
+  "BruteForce": ["Force brute", "Essais répétés d’identifiants pour deviner un accès."],
+  "Dictionary": ["Attaque par dictionnaire", "Essais de mots de passe courants issus d’une liste pour deviner un accès."],
+  "Exfiltration": ["Exfiltration", "Extraction de données sensibles hors du réseau."],
+  "False_data_injection": ["Injection de fausses données", "Envoi de fausses mesures ou commandes pour tromper le procédé industriel."],
+  "MQTT_cloud_broker_subscription": ["Abonnement MQTT non autorisé", "Abonnement à un broker MQTT cloud pour capter les messages des capteurs IoT."],
+  "Reverse_shell": ["Reverse shell", "La machine compromise ouvre une connexion vers l’attaquant, qui obtient une invite de commande."],
+  "Scanning_vulnerability": ["Recherche de vulnérabilités", "Scan visant à repérer des failles connues sur les équipements."],
+  "insider_malcious": ["Menace interne", "Utilisateur légitime du réseau qui agit de façon malveillante."]
+};
+function describe(name) {
+  const e = ATK_EXACT[name];
+  return e ? [null, e[0], e[1]] : [null, name, "Famille présente dans le jeu de données X-IIoTID."];
+}
+const REFERENCE = Object.keys(ATK_EXACT).slice(0, 8);
+/* ---------- composants graphiques ---------- */
+function kpi(label, value, note, color, spark) {
+  return '<div class="card kpi" style="--kc:' + (color || V("accent")) + '"><div class="label">' + esc(label) + '</div><div class="value">' + value + '</div><div class="note">' + esc(note || "") + '</div>' + (spark || "") + '</div>';
+}
+function donut(parts, centerVal, centerLab) {
+  const tot = parts.reduce((a, p) => a + p.value, 0), R = 62, L = 2 * Math.PI * R;
+  let off = 0, arcs = '<circle cx="90" cy="90" r="' + R + '" fill="none" stroke="var(--line)" stroke-width="22"/>';
+  if (tot > 0) parts.forEach(p => {
+    const len = p.value / tot * L;
+    arcs += '<circle cx="90" cy="90" r="' + R + '" fill="none" stroke="' + p.color + '" stroke-width="22" stroke-dasharray="' + len.toFixed(2) + " " + (L - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 90 90)"><title>' + esc(p.label) + " : " + p.value + '</title></circle>';
+    off += len;
+  });
+  const svg = '<svg viewBox="0 0 180 180">' + arcs + '<text class="t-main" x="90" y="94" text-anchor="middle" style="font-size:22px">' + esc(centerVal) + '</text><text x="90" y="112" text-anchor="middle">' + esc(centerLab || "") + '</text></svg>';
+  const list = '<div class="dl">' + parts.map(p => '<div><span><i style="background:' + p.color + '"></i>' + esc(p.label) + '</span><b style="font-family:var(--mono)">' + p.value + (tot ? ' · ' + (p.value / tot * 100).toFixed(1) + ' %' : '') + '</b></div>').join("") + '</div>';
+  return '<div class="donutwrap">' + svg + list + '</div>';
+}
+function lineChart(host, xs, series) {
+  const W = 520, H = 250, L = 52, R = 14, T = 14, B = 36;
+  let lo = Infinity, hi = -Infinity;
+  series.forEach(s => s.values.forEach(v => { lo = Math.min(lo, v); hi = Math.max(hi, v); }));
+  if (!(hi > lo)) hi = lo + 1;
+  const pad = (hi - lo) * 0.12; lo -= pad; hi += pad;
+  const x = i => L + (W - L - R) * (xs.length === 1 ? 0 : i / (xs.length - 1));
+  const y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
+  const id = "g" + Math.random().toString(36).slice(2, 7);
+  let defs = "", g = "", lines = "";
+  series.forEach((s, k) => { defs += '<linearGradient id="' + id + k + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + s.color + '" stop-opacity=".3"/><stop offset="1" stop-color="' + s.color + '" stop-opacity="0"/></linearGradient>'; });
+  for (let k = 0; k <= 4; k++) { const v = lo + (hi - lo) * k / 4, yy = y(v); g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--grid)" stroke-dasharray="3 4"/><text x="' + (L - 8) + '" y="' + (yy + 4) + '" text-anchor="end">' + v.toFixed(3) + '</text>'; }
+  xs.forEach((s, i) => { if (i % 2 === 1 || xs.length < 6) g += '<text x="' + x(i) + '" y="' + (H - 14) + '" text-anchor="middle">' + s + ' %</text>'; });
+  series.forEach((s, k) => {
+    const pts = s.values.map((v, i) => x(i).toFixed(1) + "," + y(v).toFixed(1));
+    lines += '<path d="M' + x(0).toFixed(1) + "," + (H - B) + " L" + pts.join(" L") + " L" + x(s.values.length - 1).toFixed(1) + "," + (H - B) + ' Z" fill="url(#' + id + k + ')"/>';
+    lines += '<polyline fill="none" stroke="' + s.color + '" stroke-width="2.4" stroke-linejoin="round" points="' + pts.join(" ") + '"/>';
+    s.values.forEach((v, i) => { lines += '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="3.4" fill="var(--panel)" stroke="' + s.color + '" stroke-width="2"><title>' + esc(s.name) + " · " + xs[i] + " % : " + v.toFixed(4) + '</title></circle>'; });
+  });
+  host.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '"><defs>' + defs + '</defs>' + g + lines + '</svg><div class="legend">' + series.map(s => '<span><i style="background:' + s.color + '"></i>' + esc(s.name) + '</span>').join("") + '<span>Axe horizontal : part du jeu d’entraînement</span></div>';
+}
+function radar(host, labels, series, lo) {
+  const cx = 150, cy = 140, R = 100, n = labels.length, ang = i => -Math.PI / 2 + i * 2 * Math.PI / n;
+  const pt = (i, v) => { const r = R * Math.max(0, Math.min(1, (v - lo) / (1 - lo))); return [cx + r * Math.cos(ang(i)), cy + r * Math.sin(ang(i))]; };
+  let g = "";
+  for (let k = 1; k <= 4; k++) {
+    const r = R * k / 4;
+    g += '<polygon points="' + labels.map((_, i) => (cx + r * Math.cos(ang(i))).toFixed(1) + "," + (cy + r * Math.sin(ang(i))).toFixed(1)).join(" ") + '" fill="none" stroke="var(--grid)"/><text x="' + (cx + 4) + '" y="' + (cy - r + 10) + '">' + (lo + (1 - lo) * k / 4).toFixed(2) + '</text>';
+  }
+  labels.forEach((l, i) => { const p = pt(i, 1), a = ang(i); g += '<line x1="' + cx + '" y1="' + cy + '" x2="' + p[0].toFixed(1) + '" y2="' + p[1].toFixed(1) + '" stroke="var(--grid)"/><text x="' + (cx + (R + 16) * Math.cos(a)).toFixed(1) + '" y="' + (cy + (R + 16) * Math.sin(a) + 4).toFixed(1) + '" text-anchor="middle" style="fill:var(--text2)">' + esc(l) + '</text>'; });
+  series.forEach(s => {
+    g += '<polygon points="' + s.values.map((v, i) => pt(i, v).map(c => c.toFixed(1)).join(",")).join(" ") + '" fill="' + s.color + '" fill-opacity=".14" stroke="' + s.color + '" stroke-width="2"/>';
+    s.values.forEach((v, i) => { const p = pt(i, v); g += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="3" fill="' + s.color + '"><title>' + esc(s.name) + " · " + labels[i] + " : " + v.toFixed(4) + '</title></circle>'; });
+  });
+  host.innerHTML = '<svg viewBox="0 0 300 275">' + g + '</svg><div class="legend">' + series.map(s => '<span><i style="background:' + s.color + '"></i>' + esc(s.name) + '</span>').join("") + '</div>';
+}
+function dotplot(host, rows, series) {
+  let lo = 1;
+  rows.forEach(r => series.forEach(s => { const v = r.vals[s.key]; if (v != null) lo = Math.min(lo, v); }));
+  lo = Math.max(0, Math.floor((lo - 0.02) * 50) / 50);
+  const W = 460, rowH = 34, L = 92, R = 16, T = 8, H = T + rows.length * rowH + 28, x = v => L + (W - L - R) * (v - lo) / (1 - lo);
+  let g = "";
+  for (let k = 0; k <= 4; k++) { const v = lo + (1 - lo) * k / 4; g += '<line x1="' + x(v) + '" x2="' + x(v) + '" y1="' + T + '" y2="' + (H - 24) + '" stroke="var(--grid)" stroke-dasharray="3 4"/><text x="' + x(v) + '" y="' + (H - 8) + '" text-anchor="middle">' + v.toFixed(2) + '</text>'; }
+  rows.forEach((r, i) => {
+    const yy = T + i * rowH + rowH / 2;
+    g += '<text x="' + (L - 10) + '" y="' + (yy + 4) + '" text-anchor="end" style="fill:var(--text2)">' + esc(r.label) + '</text>';
+    const vs = series.map(s => r.vals[s.key]).filter(v => v != null);
+    if (vs.length > 1) g += '<line x1="' + x(Math.min.apply(null, vs)) + '" x2="' + x(Math.max.apply(null, vs)) + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--line2)" stroke-width="3" stroke-linecap="round"/>';
+    series.forEach(s => { const v = r.vals[s.key]; if (v != null) g += '<circle cx="' + x(v).toFixed(1) + '" cy="' + yy + '" r="6" fill="' + s.color + '" stroke="var(--panel)" stroke-width="2"><title>' + esc(s.name) + " · " + r.label + " : " + v.toFixed(4) + '</title></circle>'; });
+  });
+  host.innerHTML = '<div class="chart"><svg viewBox="0 0 ' + W + " " + H + '">' + g + '</svg></div><div class="legend">' + series.map(s => '<span><i style="background:' + s.color + '"></i>' + esc(s.name) + '</span>').join("") + '<span>Axe zoomé : ' + lo.toFixed(2) + ' à 1</span></div>';
+}
+function hbars(host, items, fmt) {
+  host.innerHTML = items.map(it => {
+    const w = Math.max(0, Math.min(100, it.ratio * 100));
+    return '<div class="row"><div class="name" title="' + esc(it.label) + '">' + esc(it.label) + (it.n ? ' <span style="color:var(--muted)">· n=' + it.n + '</span>' : "") + '</div><div class="track"><div class="bar" style="width:' + w + '%;background:' + (it.color || V("accent")) + '"></div></div><div class="val">' + fmt(it) + '</div></div>';
+  }).join("");
+}
+function sparkline(vals, color) {
+  if (!vals || vals.length < 2) return "";
+  const W = 200, H = 34, lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals) || 1, rng = (hi - lo) || 1;
+  const pts = vals.map((v, i) => (i / (vals.length - 1) * W).toFixed(1) + "," + (H - 3 - (v - lo) / rng * (H - 6)).toFixed(1)).join(" ");
+  return '<svg viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none" style="width:100%;height:34px;margin-top:8px"><polyline fill="none" stroke="' + color + '" stroke-width="2" points="' + pts + '"/></svg>';
+}
+function riskLevel(p) { return p < 0.2 ? ["Faible", "ok"] : p < 0.5 ? ["Modéré", "warn"] : p < 0.8 ? ["Élevé", "danger"] : ["Critique", "danger"]; }
+function gauge(prob, color) {
+  const len = Math.PI * 80, fill = Math.max(0, Math.min(1, prob)) * len;
+  return '<div class="chart" style="max-width:300px;margin:10px auto 0"><svg viewBox="0 0 200 122"><path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="var(--line)" stroke-width="14" stroke-linecap="round"/><path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="' + color + '" stroke-width="14" stroke-linecap="round" stroke-dasharray="' + fill.toFixed(1) + " " + len.toFixed(1) + '"/><line x1="100" y1="14" x2="100" y2="30" stroke="var(--muted)" stroke-width="2"/><text class="t-main" x="100" y="92" text-anchor="middle">' + pct(prob, 1) + '</text><text x="100" y="112" text-anchor="middle">PROBABILITÉ D’ATTAQUE</text></svg></div><div style="display:flex;justify-content:space-between;max-width:300px;margin:0 auto;font:11.5px var(--mono);color:var(--muted)"><span>0 %</span><span>seuil 50 %</span><span>100 %</span></div>';
+}
+
+/* ---------- formulaire ---------- */
+const GROUP_ID = ["Protocol", "Service", "anomaly_alert"];
+const GROUP_VOL = ["Duration", "Scr_bytes", "Des_bytes", "Scr_pkts", "Des_pkts"];
+const PH = { Protocol: "ex. tcp", Service: "ex. http", anomaly_alert: "ex. TRUE", Duration: "ex. 0.52", Scr_bytes: "ex. 120", Des_bytes: "ex. 300", Scr_pkts: "ex. 3", Des_pkts: "ex. 4" };
+const HINT = { Protocol: "protocole de transport", Service: "service applicatif", anomaly_alert: "TRUE ou FALSE", Duration: "secondes", Scr_bytes: "octets émis par la source", Des_bytes: "octets reçus par la cible", Scr_pkts: "paquets émis", Des_pkts: "paquets reçus" };
+function fieldHtml(c, isCat, adv) {
+  const ph = PH[c] || (adv ? (isCat ? "valeur la plus fréquente (auto)" : "médiane (auto)") : (isCat ? "texte" : "nombre"));
+  const dl = (c === "Protocol" || c === "anomaly_alert") ? ' list="dl-' + esc(c) + '"' : "";
+  return '<label class="field" data-name="' + esc(c.toLowerCase()) + '"><span>' + esc(c) + '</span><input type="text" data-col="' + esc(c) + '" data-kind="' + (isCat ? "cat" : "num") + '" inputmode="' + (isCat ? "text" : "decimal") + '" autocomplete="off" placeholder="' + esc(ph) + '"' + dl + '>' + (HINT[c] ? '<small>' + esc(HINT[c]) + '</small>' : "") + '</label>';
+}
+function buildForm() {
+  const cols = state.info.columns || [], cat = new Set(state.info.categorical || []);
+  const gid = GROUP_ID.filter(c => cols.indexOf(c) >= 0), gvol = GROUP_VOL.filter(c => cols.indexOf(c) >= 0);
+  let adv = cols.filter(c => gid.indexOf(c) < 0 && gvol.indexOf(c) < 0), a = gid, b = gvol;
+  if (!a.length && !b.length) { b = cols.slice(0, 8); adv = cols.slice(8); }
+  $("#grpId").innerHTML = a.map(c => fieldHtml(c, cat.has(c), false)).join("") || '<span class="hint">—</span>';
+  $("#grpVol").innerHTML = b.map(c => fieldHtml(c, cat.has(c), false)).join("") || '<span class="hint">Colonnes indisponibles : le modèle n’est pas chargé.</span>';
+  $("#advFields").innerHTML = adv.map(c => fieldHtml(c, cat.has(c), true)).join("");
+  $("#advCount").textContent = adv.length;
+  $$("#view-detect input[data-col]").forEach(i => i.addEventListener("input", () => { state.truth = null; }));
+}
+function collectPayload() {
+  const data = {};
+  $$("#view-detect input[data-col]").forEach(i => {
+    const v = i.value.trim(); if (v === "") return;
+    if (i.dataset.kind === "cat") { data[i.dataset.col] = v; return; }
+    const n = Number(v.replace(",", ".")); data[i.dataset.col] = Number.isFinite(n) ? n : v;
+  });
+  return { data: data };
+}
+function fillForm(data) {
+  $$("#view-detect input[data-col]").forEach(i => { i.value = ""; });
+  Object.keys(data).forEach(k => { const i = $('#view-detect input[data-col="' + k.replace(/"/g, '\\"') + '"]'); if (i && data[k] != null) i.value = data[k]; });
+}
+function notice(msg, kind) { $("#notice").innerHTML = msg ? '<div class="notice ' + kind + '">' + msg + '</div>' : ""; }
+function detailLines(body) {
+  if (!body) return ["Erreur inconnue"];
+  const d = body.errors || body.detail;
+  if (Array.isArray(d)) return d.map(x => typeof x === "string" ? x : JSON.stringify(x));
+  return [typeof d === "string" ? d : JSON.stringify(d)];
+}
+async function analyze() {
+  const payload = collectPayload();
+  if (!Object.keys(payload.data).length) { notice("Renseignez au moins un champ ou chargez un flux réel.", "warn"); return; }
+  notice("", "");
+  const btn = $("#btnAnalyze"); btn.disabled = true; btn.textContent = "Analyse en cours…";
+  const opts = { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) };
+  const p = await api("/predict", opts);
+  btn.disabled = false; btn.textContent = "Analyser le flux";
+  if (!p.ok) { notice("<strong>Requête rejetée (code " + p.status + ").</strong><ul class=\"clean\">" + detailLines(p.body).map(l => "<li>" + esc(l) + "</li>").join("") + "</ul>", "danger"); return; }
+  const e = await api("/explain", opts);
+  renderResult(p.body, e.ok ? e.body : null);
+  loadStats();
+}
+function renderResult(pred, exp) {
+  const prob = pred.probability_attack, attack = pred.prediction === "Attack", lvl = riskLevel(prob);
+  let h = '<h2>Résultat de l’analyse</h2><div class="verdict ' + (attack ? "attack" : "normal") + '" style="margin-top:12px"><div><div class="v-label">Verdict</div><div class="v-main">' + (attack ? "Attaque détectée" : "Trafic normal") + '</div></div><div style="margin-left:auto;text-align:right"><div class="v-label">Niveau de risque</div><span class="badge ' + lvl[1] + '">' + lvl[0] + '</span></div></div>';
+  h += gauge(prob, attack ? V("danger") : V("ok"));
+  if (state.truth) {
+    const ok = state.truth.true_label === pred.prediction;
+    h += '<h3>Comparaison avec l’étiquette réelle</h3><p><span class="badge ' + (ok ? "ok" : "danger") + '">' + (ok ? "Prédiction conforme" : "Prédiction erronée") + '</span> Étiquette réelle : <strong>' + esc(state.truth.true_label) + '</strong>' + (state.truth.true_type && state.truth.true_type !== "Normal" ? " (type : " + esc(state.truth.true_type) + ")" : "") + '</p>';
+  }
+  if (exp && exp.contributions && exp.contributions.length) {
+    const max = Math.max.apply(null, exp.contributions.map(c => Math.abs(c.contribution))) || 1;
+    h += '<h3>Variables déterminantes</h3><p class="hint">Rouge : pousse vers Attack. Vert : pousse vers Normal.</p><div class="bars div">' + exp.contributions.map(c => {
+      const w = Math.abs(c.contribution) / max * 50;
+      const st = c.contribution > 0 ? "left:50%;width:" + w + "%;background:" + V("danger") + ";border-radius:0 6px 6px 0" : "right:50%;width:" + w + "%;background:" + V("ok") + ";border-radius:6px 0 0 6px";
+      return '<div class="row"><div class="name" title="' + esc(c.feature) + '">' + esc(c.feature) + '</div><div class="track"><div class="bar" style="' + st + '"></div></div><div class="val">' + (c.contribution > 0 ? "+" : "") + num(c.contribution, 3) + '</div></div>';
+    }).join("") + '</div>';
+  }
+  h += '<details><summary>Réponse brute de l’API</summary><pre>' + esc(JSON.stringify(pred, null, 2)) + '</pre></details>';
+  $("#resultCard").innerHTML = h;
+}
+async function loadSample(kind) {
+  notice("", "");
+  const r = await api("/sample?kind=" + kind);
+  if (!r.ok) { notice("<strong>Flux réel indisponible (code " + r.status + ").</strong> " + esc(detailLines(r.body).join(" ")) + "<br>Le dossier <code>data/raw</code> doit être visible par l’API (voir la carte « État des données »).", "warn"); return; }
+  fillForm(r.body.data);
+  state.truth = { true_label: r.body.true_label, true_type: r.body.true_type };
+  $("#resultCard").innerHTML = '<h2>Résultat de l’analyse</h2><p class="hint">Flux chargé. Lancez l’analyse pour obtenir le verdict.</p>';
+}
+
+/* ---------- attaques et modèle ---------- */
+const MET = [["accuracy", "Exactitude"], ["precision", "Précision"], ["recall", "Rappel"], ["f1", "F1"], ["auc", "AUC"]];
+const recColor = r => r >= 0.95 ? V("ok") : (r >= 0.8 ? V("warnc") : V("danger"));
+function recItems(card) { return (card.recall_par_type || []).slice().sort((a, b) => a.recall - b.recall).map(r => ({ label: r.type, ratio: r.recall, n: r.n, color: recColor(r.recall) })); }
+function famDonut(card) {
+  const rec = card.recall_par_type || [];
+  if (!rec.length) return '<div class="empty">Familles d’attaques indisponibles.<br>Le fichier <code>recall_par_type.csv</code> n’a pas atteint la fiche du modèle.</div>';
+  return donut(rec.slice().sort((a, b) => b.n - a.n).map((r, i) => ({ label: r.type, value: r.n, color: PAL[i % PAL.length] })), String(rec.reduce((a, r) => a + r.n, 0)), "ATTAQUES");
+}
+function renderAttacks() {
+  const card = state.info.card || {}, rec = card.recall_par_type || [];
+  $("#atkDonut").innerHTML = famDonut(card);
+  const it = recItems(card);
+  if (it.length) hbars($("#atkRecall"), it, x => pct(x.ratio, 1)); else $("#atkRecall").innerHTML = '<div class="empty">Taux de détection indisponibles.</div>';
+  if (rec.length) {
+    const sorted = rec.slice().sort((a, b) => b.n - a.n);
+    $("#atkCards").innerHTML = sorted.map((r, i) => {
+      const d = describe(String(r.type)), lvl = r.recall >= 0.95 ? ["Bien détectée", "ok"] : r.recall >= 0.8 ? ["Détection moyenne", "warn"] : ["Difficile à détecter", "danger"];
+      return '<div class="card atk" style="--ac:' + PAL[i % PAL.length] + '"><h3>' + esc(r.type) + '</h3><div class="meta"><span class="badge neutral">' + r.n + ' attaques</span><span class="badge ' + lvl[1] + '">' + pct(r.recall, 1) + ' · ' + lvl[0] + '</span></div><p>' + esc(d[2]) + '</p></div>';
+    }).join("");
+  } else {
+    $("#atkCards").innerHTML = REFERENCE.map((n, i) => { const d = describe(n); return '<div class="card atk" style="--ac:' + PAL[i % PAL.length] + '"><h3>' + esc(n) + '</h3><div class="meta"><span class="badge neutral">référence générale</span></div><p>' + esc(d[2]) + '</p></div>'; }).join("") +
+      '<div class="card" style="grid-column:1/-1"><p class="hint">Fiches génériques : les familles réellement présentes dans tes données apparaîtront ici dès que la fiche du modèle sera disponible (voir « État des données » sur la vue d’ensemble).</p></div>';
+  }
+}
+function renderModel() {
+  const card = state.info.card || {};
+  if (!card.metrics) {
+    $("#modelEmpty").innerHTML = '<div class="notice info">Fiche de performance indisponible. Vérifiez que <code>./reports</code> est monté dans le conteneur (docker-compose.yml), puis lancez <code>dvc repro</code> et <code>python -m src.promote --tag full</code>.</div>';
+    $("#modelBody").hidden = true; return;
+  }
+  $("#modelEmpty").innerHTML = ""; $("#modelBody").hidden = false;
+  const m = card.metrics, sp = [["train", "Entraînement", V("c1")], ["test", "Test", V("c2")], ["val", "Validation", V("c3")]], mets = MET.concat([["loss", "Log-loss"]]);
+  $("#metricTable").innerHTML = "<tr><th>Jeu</th>" + mets.map(x => '<th class="num">' + x[1] + "</th>").join("") + "</tr>" + sp.map(s => '<tr><td><strong style="color:' + s[2] + '">' + s[1] + "</strong></td>" + mets.map(x => '<td class="num">' + num(m[s[0] + "_" + x[0]], 4) + "</td>").join("") + "</tr>").join("");
+  dotplot($("#dotplot"), MET.map(x => ({ label: x[1], vals: { train: m["train_" + x[0]], test: m["test_" + x[0]], val: m["val_" + x[0]] } })), sp.map(s => ({ key: s[0], name: s[1], color: s[2] })));
+  const p = card.params || {}, sz = card.sizes || {};
+  $("#modelKv").innerHTML = [["Algorithme", "Régression logistique"], ["Paramètre C", p.C], ["Pondération", p.class_weight == null ? "aucune" : p.class_weight], ["Itérations max.", p.max_iter], ["Tolérance", p.tol], ["Validation croisée", p.cv_folds ? p.cv_folds + " plis" : null], ["Lignes d’apprentissage", sz.train], ["Lignes de test", sz.test], ["Lignes de validation", sz.validation], ["Entraîné le", card.trained_at ? new Date(card.trained_at).toLocaleString("fr-FR") : null]].filter(r => r[1] != null).map(r => "<dt>" + esc(r[0]) + "</dt><dd>" + esc(r[1]) + "</dd>").join("");
+  const lc = card.learning_curves;
+  if (lc && lc.steps && lc.steps.length) {
+    lineChart($("#lcLoss"), lc.steps, [{ name: "Entraînement", values: lc.train_loss, color: V("c1") }, { name: "Test", values: lc.test_loss, color: V("c2") }]);
+    lineChart($("#lcAcc"), lc.steps, [{ name: "Entraînement", values: lc.train_accuracy, color: V("c1") }, { name: "Test", values: lc.test_accuracy, color: V("c2") }]);
+  } else { $("#lcLoss").innerHTML = $("#lcAcc").innerHTML = '<div class="empty">Courbes d’apprentissage indisponibles.</div>'; }
+  const it = recItems(card);
+  if (it.length) hbars($("#recallBars"), it, x => pct(x.ratio, 1)); else $("#recallBars").innerHTML = '<div class="empty">Familles indisponibles.</div>';
+}
+function renderOverviewModel() {
+  const card = state.info.card || {}, m = card.metrics;
+  if (!m) {
+    $("#kpiModel").innerHTML = kpi("Modèle", state.info.model_loaded ? "chargé" : "absent", "Fiche de performance indisponible", V("warnc")) + kpi("Colonnes d’entrée", (state.info.columns || []).length || "n/d", "Variables attendues par l’API", V("c3"));
+    $("#ovRadar").innerHTML = '<div class="empty">Indisponible : fiche du modèle absente.</div>';
+    $("#ovKvEmpty").innerHTML = '<div class="empty">Indisponible</div>'; $("#ovKv").innerHTML = "";
+  } else {
+    $("#kpiModel").innerHTML = kpi("F1 · validation", num(m.val_f1, 4), "Critère de promotion", V("c1")) + kpi("Rappel · validation", num(m.val_recall, 4), "Attaques détectées", V("ok")) + kpi("Précision · validation", num(m.val_precision, 4), "Alertes justifiées", V("c3")) + kpi("AUC · validation", num(m.val_auc, 4), "Séparation des classes", V("c2"));
+    let lo = 1; ["train", "test", "val"].forEach(s => MET.forEach(x => { const v = m[s + "_" + x[0]]; if (v != null) lo = Math.min(lo, v); }));
+    lo = Math.max(0, Math.floor((lo - 0.02) * 50) / 50);
+    radar($("#ovRadar"), MET.map(x => x[1]), [["train", "Entraînement", V("c1")], ["test", "Test", V("c2")], ["val", "Validation", V("c3")]].map(s => ({ name: s[1], color: s[2], values: MET.map(x => m[s[0] + "_" + x[0]] || 0) })), lo);
+    const p = card.params || {}, sz = card.sizes || {};
+    $("#ovKvEmpty").innerHTML = "";
+    $("#ovKv").innerHTML = [["Algorithme", "Rég. logistique"], ["C", p.C], ["Pondération", p.class_weight == null ? "aucune" : p.class_weight], ["Lignes train", sz.train], ["Lignes validation", sz.validation], ["Entraîné le", card.trained_at ? new Date(card.trained_at).toLocaleDateString("fr-FR") : null]].filter(r => r[1] != null).map(r => "<dt>" + esc(r[0]) + "</dt><dd>" + esc(r[1]) + "</dd>").join("");
+  }
+  $("#ovFamilies").innerHTML = famDonut(card);
+  const it = recItems(card);
+  if (it.length) hbars($("#ovRecall"), it, x => pct(x.ratio, 1)); else $("#ovRecall").innerHTML = '<div class="empty">Familles indisponibles.</div>';
+}
+function renderDiag() {
+  const i = state.info || {}, c = i.card || {}, s = state.stats || {}, d = s.drift || {};
+  const chk = [
+    ["API joignable", !!(state.health && state.health.ok), "Lancez l’API (docker compose up -d)."],
+    ["Modèle chargé", !!i.model_loaded, "Vérifiez ./models monté et model.pkl présent."],
+    ["Fiche de performance (métriques)", !!c.metrics, "Montez ./reports et relancez promote."],
+    ["Courbes d’apprentissage", !!(c.learning_curves && c.learning_curves.steps), "Relancez dvc repro puis promote."],
+    ["Familles d’attaques", !!(c.recall_par_type && c.recall_par_type.length), "recall_par_type.csv absent de la fiche."],
+    ["Requêtes journalisées", (s.total || 0) > 0, "python -m src.simulate_traffic --n 100"],
+    ["Rapport de dérive", !!d.available, "python -m src.monitoring (50 requêtes minimum)."]
+  ];
+  $("#diag").innerHTML = '<h2>Diagnostic</h2><p class="hint">Chaque ligne rouge indique ce qui manque et comment le corriger.</p>' + chk.map(x => '<div class="it"><span>' + esc(x[0]) + '</span>' + (x[1] ? '<span class="badge ok">OK</span>' : '<span class="badge danger">Manquant</span>') + '</div>' + (x[1] ? "" : '<div class="hint" style="padding:2px 0 6px">→ ' + esc(x[2]) + '</div>')).join("");
+}
+
+/* ---------- surveillance ---------- */
+function histChart(h) {
+  const W = 520, H = 220, L = 36, R = 10, T = 14, B = 34, n = h.length, mx = Math.max.apply(null, h.concat([1])), bw = (W - L - R) / n;
+  let g = "";
+  for (let k = 0; k <= 4; k++) { const v = mx * k / 4, yy = T + (H - T - B) * (1 - k / 4); g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--grid)" stroke-dasharray="3 4"/><text x="' + (L - 6) + '" y="' + (yy + 4) + '" text-anchor="end">' + Math.round(v) + '</text>'; }
+  h.forEach((v, i) => {
+    const bh = (H - T - B) * v / mx, xx = L + i * bw + 3;
+    g += '<rect x="' + xx.toFixed(1) + '" y="' + (H - B - bh).toFixed(1) + '" width="' + (bw - 6).toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="4" fill="' + (i >= n / 2 ? V("danger") : V("c3")) + '" opacity=".92"><title>' + (i / n).toFixed(1) + " – " + ((i + 1) / n).toFixed(1) + " : " + v + ' requête(s)</title></rect><text x="' + (xx + (bw - 6) / 2).toFixed(1) + '" y="' + (H - 18) + '" text-anchor="middle">' + (i / n).toFixed(1) + '</text>';
+  });
+  const tx = L + (W - L - R) / 2;
+  g += '<line x1="' + tx + '" x2="' + tx + '" y1="' + T + '" y2="' + (H - B) + '" stroke="var(--warnc)" stroke-dasharray="5 4" stroke-width="1.5"/><text x="' + (tx + 5) + '" y="' + (T + 8) + '" style="fill:var(--warnc)">seuil 50 %</text>';
+  return '<svg viewBox="0 0 ' + W + " " + H + '">' + g + '</svg><div class="legend"><span><i style="background:' + V("c3") + '"></i>Classées Normal</span><span><i style="background:' + V("danger") + '"></i>Classées Attack</span></div>';
+}
+function timelineChart(recent) {
+  const arr = recent.filter(x => x.probability_attack != null).slice().sort((a, b) => String(a.received_at || "").localeCompare(String(b.received_at || "")));
+  if (arr.length < 2) return '<div class="empty">Pas assez de requêtes.<br>Lancez <code>python -m src.simulate_traffic --n 100</code>.</div>';
+  const W = 760, H = 220, L = 40, R = 12, T = 12, B = 28, y = v => T + (H - T - B) * (1 - v), x = i => L + (W - L - R) * i / (arr.length - 1);
+  let g = "";
+  [0, .25, .5, .75, 1].forEach(v => { g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="' + (v === .5 ? V("warnc") : "var(--grid)") + '" stroke-dasharray="' + (v === .5 ? "6 4" : "3 4") + '"/><text x="' + (L - 6) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + v.toFixed(2) + '</text>'; });
+  g += '<polyline fill="none" stroke="' + V("c1") + '" stroke-width="2" points="' + arr.map((r, i) => x(i).toFixed(1) + "," + y(r.probability_attack).toFixed(1)).join(" ") + '"/>';
+  arr.forEach((r, i) => { g += '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(r.probability_attack).toFixed(1) + '" r="3.6" fill="' + (r.prediction === "Attack" ? V("danger") : V("ok")) + '"><title>' + esc(r.prediction) + " · " + num(r.probability_attack, 3) + '</title></circle>'; });
+  return '<svg viewBox="0 0 ' + W + " " + H + '">' + g + '</svg><div class="legend"><span><i style="background:' + V("danger") + '"></i>Attack</span><span><i style="background:' + V("ok") + '"></i>Normal</span></div>';
+}
+async function loadStats() {
+  const r = await api("/stats");
+  if (!r.ok) { renderDiag(); return; }
+  const s = r.body; state.stats = s;
+  const probs = (s.recent || []).filter(x => x.probability_attack != null).slice().sort((a, b) => String(a.received_at || "").localeCompare(String(b.received_at || ""))).map(x => x.probability_attack);
+  const prod = kpi("Requêtes reçues", s.total, "Depuis la création du journal", V("c1"), sparkline(probs, V("c1"))) + kpi("Classées Attack", s.attacks, "Alertes émises", V("danger")) + kpi("Classées Normal", s.normal, "Flux jugés légitimes", V("ok")) + kpi("Taux d’alerte", s.attack_rate == null ? "n/d" : pct(s.attack_rate, 1), "Attack / total", V("warnc"));
+  $("#kpiProd").innerHTML = prod; $("#kpiMon").innerHTML = prod;
+  $("#ovDonut").innerHTML = s.total ? donut([{ label: "Attack", value: s.attacks, color: V("danger") }, { label: "Normal", value: s.normal, color: V("ok") }], String(s.total), "REQUÊTES") : '<div class="empty">Aucune requête reçue.<br>Lancez <code>python -m src.simulate_traffic --n 100</code>.</div>';
+  $("#hist").innerHTML = (s.histogram && s.total) ? histChart(s.histogram) : '<div class="empty">Aucune donnée : aucune requête reçue.</div>';
+  $("#timeline").innerHTML = timelineChart(s.recent || []);
+  const d = s.drift || {};
+  if (d.available) {
+    const share = d.share_drifted_columns || 0, w = Math.min(100, share * 100 / 0.3);
+    $("#driftCard").innerHTML = '<h2>Dérive des données</h2><p><span class="badge ' + (d.dataset_drift ? "danger" : "ok") + '">' + (d.dataset_drift ? "Dérive détectée" : "Aucune dérive détectée") + '</span></p><div class="bars" style="margin-top:12px"><div class="row" style="grid-template-columns:1fr"><div class="track" style="height:16px"><div class="bar" style="width:' + w + '%;background:' + (d.dataset_drift ? V("danger") : V("ok")) + '"></div><div style="position:absolute;left:50%;top:-4px;bottom:-4px;width:2px;background:var(--warnc)"></div></div></div></div><p class="hint" style="margin:4px 0 12px">Colonnes en dérive : ' + pct(share, 1) + ' · seuil d’alerte : 15 % (repère orange)</p><dl class="kv"><dt>Colonnes en dérive</dt><dd>' + esc(d.n_drifted_columns) + '</dd><dt>Requêtes analysées</dt><dd>' + esc(d.n_requests) + '</dd></dl>' + (d.report ? '<p style="margin-top:12px"><a href="/drift-report" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700">Ouvrir le rapport détaillé →</a></p>' : "") + '<p class="hint">Tests de Kolmogorov-Smirnov (numériques) et chi² (catégories).</p>';
+  } else {
+    $("#driftCard").innerHTML = '<h2>Dérive des données</h2><div class="empty">Aucun rapport disponible.<br>Générez-en un avec <code>python -m src.monitoring</code> après au moins 50 requêtes.</div>';
+  }
+  if (!(s.recent || []).length) { $("#recent").innerHTML = '<tr><td class="hint">Aucune requête reçue pour le moment.</td></tr>'; }
+  else {
+    const cols = ["Heure", "Verdict", "Probabilité", "Protocol", "Service", "Duration", "Scr_bytes"];
+    $("#recent").innerHTML = "<tr>" + cols.map((c, i) => "<th" + (i === 2 || i > 4 ? ' class="num"' : "") + ">" + esc(c) + "</th>").join("") + "</tr>" + s.recent.map(x => "<tr><td>" + (x.received_at ? esc(new Date(x.received_at).toLocaleTimeString("fr-FR")) : "n/d") + '</td><td><span class="badge ' + (x.prediction === "Attack" ? "attack" : "normal") + '">' + esc(x.prediction) + '</span></td><td class="num">' + num(x.probability_attack, 3) + "</td><td>" + esc(x.Protocol) + "</td><td>" + esc(x.Service) + '</td><td class="num">' + (x.Duration == null ? "n/d" : num(x.Duration, 3)) + '</td><td class="num">' + (x.Scr_bytes == null ? "n/d" : esc(x.Scr_bytes)) + "</td></tr>").join("");
+  }
+  renderDiag();
+}
+
+/* ---------- démarrage ---------- */
+async function init() {
+  const h = await api("/health"); state.health = h;
+  const ok = h.ok && h.body && h.body.model_loaded;
+  $("#statusDot").className = "dot " + (ok ? "on" : "off");
+  $("#statusText").textContent = ok ? "Service opérationnel" : (h.ok ? "Modèle non chargé" : "Service injoignable");
+  const info = await api("/model-info");
+  state.info = info.ok ? info.body : { model_loaded: false, columns: [], categorical: [], card: {} };
+  if (!ok) $("#banner").innerHTML = '<div class="notice warn">Aucun modèle de production n’est chargé. Lancez <code>python -m src.promote --tag full</code>, vérifiez que <code>./models</code> est monté dans Docker, puis redémarrez l’API.</div>';
+  buildForm(); renderModel(); renderOverviewModel(); renderAttacks(); renderDiag();
+  $("#btnAnalyze").addEventListener("click", analyze);
+  $("#btnAttack").addEventListener("click", () => loadSample("attack"));
+  $("#btnNormal").addEventListener("click", () => loadSample("normal"));
+  $("#btnReset").addEventListener("click", () => {
+    $$("#view-detect input[data-col]").forEach(i => { i.value = ""; });
+    state.truth = null; notice("", "");
+    $("#resultCard").innerHTML = '<h2>Résultat de l’analyse</h2><p class="hint">Aucune analyse. Renseignez un flux ou chargez un flux réel, puis lancez l’analyse.</p>';
+  });
+  $("#btnRefresh").addEventListener("click", loadStats);
+  $("#advSearch").addEventListener("input", e => {
+    const q = e.target.value.trim().toLowerCase();
+    $$("#advFields .field").forEach(f => { f.style.display = !q || f.dataset.name.indexOf(q) >= 0 ? "" : "none"; });
+  });
+  setInterval(() => { if (state.view === "monitor" || state.view === "overview") loadStats(); }, 10000);
+  show(location.hash.slice(1));
+}
+init();
+})();
+</script>
+</body>
+</html>
